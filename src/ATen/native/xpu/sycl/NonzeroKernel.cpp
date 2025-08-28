@@ -83,7 +83,6 @@ void nonzero_template(const Tensor& self_, Tensor& out) {
   Tensor self = self_.contiguous();
 
   const int64_t num_dim = self.dim();
-  TORCH_CHECK(num_dim <= XPU_MAX_TENSORINFO_DIMS, "dim exceed max allowed dim");
 
   int64_t N = self.numel();
 
@@ -169,8 +168,6 @@ void nonzero_static_template(const Tensor& self_, int64_t size, int64_t fill_val
   Tensor self = self_.contiguous();
 
   const int64_t num_dim = self.dim();
-  TORCH_CHECK(false, "NONZERO_STATIC TEMPLATE GOT HIT");
-  TORCH_CHECK(num_dim <= XPU_MAX_TENSORINFO_DIMS, "dim exceed max allowed dim");
 
   int64_t N = self.numel();
 

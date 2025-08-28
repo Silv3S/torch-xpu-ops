@@ -3,7 +3,6 @@
 #include <ATen/xpu/EmptyTensor.h>
 
 #include <ATen/native/xpu/sycl/NonzeroKernel.h>
-#include <ATen/native/xpu/sycl/OffsetCalculator.h>
 
 namespace at {
 namespace native {
@@ -26,9 +25,9 @@ void nonzero_common_checks(const Tensor& self, Tensor& out) {
       " and self on ",
       self.device());
   TORCH_CHECK(
-      self.dim() <= MAX_DIMS,
+      self.dim() <= XPU_MAX_TENSORINFO_DIMS,
       "nonzero is not supported for tensor with more than ",
-      MAX_DIMS,
+      XPU_MAX_TENSORINFO_DIMS,
       " dimensions");
 }
 
