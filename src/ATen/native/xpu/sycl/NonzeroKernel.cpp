@@ -81,9 +81,7 @@ struct CopyIfFunc<bool> {
 template <typename scalar_t>
 void nonzero_template(const Tensor& self_, Tensor& out) {
   Tensor self = self_.contiguous();
-
   const int64_t num_dim = self.dim();
-
   int64_t N = self.numel();
 
   Tensor idx_flat = at::empty(
@@ -91,21 +89,20 @@ void nonzero_template(const Tensor& self_, Tensor& out) {
 
   const scalar_t* self_begin = self.const_data_ptr<scalar_t>();
   int64_t* idx_flat_begin = idx_flat.data_ptr<int64_t>();
-  int64_t* range_begin = nullptr;
+  int64_t* fake_range_begin = nullptr; // Used just to calculate numel
 
   CopyIfFunc<scalar_t> f(self_begin);
   auto idx_flat_end =
-      pstl::copy_if<int64_t>(range_begin, range_begin + N, idx_flat_begin, f);
-
+      pstl::copy_if<int64_t>(fake_range_begin, fake_range_begin + N, idx_flat_begin, f);
   auto num_nonzeros = std::distance(idx_flat_begin, idx_flat_end);
 
   bool need_to_copy = out.dim() == 2 &&
-      out.sizes()[0] == num_nonzeros && out.sizes()[1] == self_.dim() &&
+      out.sizes()[0] == num_nonzeros && out.sizes()[1] == self.dim() &&
       !out.t().is_contiguous();
   at::Tensor tensor_ = need_to_copy
       ? Tensor(at::detail::empty_xpu(
-            {self_.dim(), num_nonzeros}, out.options()))
-      : out.resize_({self_.dim(), num_nonzeros});
+            {self.dim(), num_nonzeros}, out.options()))
+      : out.resize_({self.dim(), num_nonzeros});
 
   if (num_nonzeros > 0 && num_dim > 0) {
     int64_t* tensor_begin = tensor_.data_ptr<int64_t>();
@@ -159,9 +156,7 @@ void nonzero_kernel(const Tensor& self, Tensor& out) {
 template <typename scalar_t>
 void nonzero_static_template(const Tensor& self_, int64_t size, int64_t fill_value, Tensor& out) {
   Tensor self = self_.contiguous();
-
   const int64_t num_dim = self.dim();
-
   int64_t N = self.numel();
 
   Tensor idx_flat = at::empty(
@@ -169,21 +164,20 @@ void nonzero_static_template(const Tensor& self_, int64_t size, int64_t fill_val
 
   const scalar_t* self_begin = self.const_data_ptr<scalar_t>();
   int64_t* idx_flat_begin = idx_flat.data_ptr<int64_t>();
-  int64_t* range_begin = nullptr;
+  int64_t* fake_range_begin = nullptr; // Used just to calculate numel
 
   CopyIfFunc<scalar_t> f(self_begin);
   auto idx_flat_end =
-      pstl::copy_if<int64_t>(range_begin, range_begin + N, idx_flat_begin, f);
-
+      pstl::copy_if<int64_t>(fake_range_begin, fake_range_begin + N, idx_flat_begin, f);
   auto num_nonzeros = std::distance(idx_flat_begin, idx_flat_end);
 
   bool need_to_copy = out.dim() == 2 &&
-      out.sizes()[0] == num_nonzeros && out.sizes()[1] == self_.dim() &&
+      out.sizes()[0] == num_nonzeros && out.sizes()[1] == self.dim() &&
       !out.t().is_contiguous();
   at::Tensor tensor_ = need_to_copy
       ? Tensor(at::detail::empty_xpu(
-            {self_.dim(), num_nonzeros}, out.options()))
-      : out.resize_({self_.dim(), num_nonzeros});
+            {self.dim(), num_nonzeros}, out.options()))
+      : out.resize_({self.dim(), num_nonzeros});
 
   if (num_nonzeros > 0 && num_dim > 0) {
     int64_t* tensor_begin = tensor_.data_ptr<int64_t>();
