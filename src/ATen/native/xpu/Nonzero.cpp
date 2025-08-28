@@ -1,7 +1,8 @@
 #include <ATen/core/Tensor.h>
+#include <ATen/native/xpu/sycl/NonzeroKernel.h>
+#include <ATen/ops/full.h>
 #include <ATen/xpu/EmptyTensor.h>
 #include <comm/TensorInfo.h>
-#include <ATen/native/xpu/sycl/NonzeroKernel.h>
 
 namespace at {
 namespace native {
@@ -32,6 +33,10 @@ void nonzero_common_checks(const Tensor& self, Tensor& out, const std::string& o
 
 Tensor& nonzero_out_xpu(const Tensor& self, Tensor& out) {
   nonzero_common_checks(self, out, "nonzero");
+  if (self.numel() == 0) {
+    out = at::empty({0, self.dim()}, out.options());
+    return out;
+  }
   xpu::nonzero_kernel(self, out);
   return out;
 }
@@ -48,6 +53,10 @@ Tensor& nonzero_static_out_xpu(
     int64_t fill_value,
     Tensor& out) {
   nonzero_common_checks(self, out, "nonzero_static");
+  if (self.numel() == 0) {
+    out = at::full({size, self.dim()}, fill_value, out.options());
+    return out;
+  }
   xpu::nonzero_static_kernel(self, size, fill_value, out);
   return out;
 }

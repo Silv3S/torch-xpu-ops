@@ -86,11 +86,6 @@ void nonzero_template(const Tensor& self_, Tensor& out) {
 
   int64_t N = self.numel();
 
-  if (N == 0) {
-    out = out.resize_({num_dim, N}).contiguous().t();
-    return;
-  }
-
   Tensor idx_flat = at::empty(
       {N}, out.options().memory_format(LEGACY_CONTIGUOUS_MEMORY_FORMAT));
   Tensor range = at::empty(
@@ -170,11 +165,6 @@ void nonzero_static_template(const Tensor& self_, int64_t size, int64_t fill_val
   const int64_t num_dim = self.dim();
 
   int64_t N = self.numel();
-
-  if (N == 0) {
-    out = out.resize_({num_dim, N}).contiguous().t();
-    return;
-  }
 
   Tensor idx_flat = at::empty(
       {N}, out.options().memory_format(LEGACY_CONTIGUOUS_MEMORY_FORMAT));
