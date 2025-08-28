@@ -10,29 +10,29 @@
 
 namespace at::native::xpu {
 
-struct FlattenIdxtoRealIdxKernelFunctor {
+struct FlattenIdxToRealIdxKernelFunctor {
   void operator()(sycl::nd_item<1> item_id) const {
     auto global_id = item_id.get_global_linear_id();
 
     if (global_id < N_) {
       auto dim = global_id / num_nonzeros_;
       auto index = global_id % num_nonzeros_;
-      tensor_begin_[global_id] =
+      out_begin_[global_id] =
           idx_flat_begin_[index] / divisor_[dim] % sizes_[dim];
     }
   }
-  FlattenIdxtoRealIdxKernelFunctor(
+  FlattenIdxToRealIdxKernelFunctor(
       int64_t N,
       const int64_t num_dim,
       const int64_t num_nonzeros,
-      int64_t* tensor_begin,
+      int64_t* out_begin,
       int64_t* idx_flat_begin,
       int64_t* divisor,
       int64_t* sizes)
       : N_(N),
         num_dim_(num_dim),
         num_nonzeros_(num_nonzeros),
-        tensor_begin_(tensor_begin),
+        out_begin_(out_begin),
         idx_flat_begin_(idx_flat_begin) {
     for (auto dim = num_dim - 1; dim >= 0; dim--) {
       sizes_[dim] = sizes[dim];
@@ -44,7 +44,7 @@ struct FlattenIdxtoRealIdxKernelFunctor {
   int64_t N_;
   const int64_t num_dim_;
   const int64_t num_nonzeros_;
-  int64_t* tensor_begin_;
+  int64_t* out_begin_;
   int64_t* idx_flat_begin_;
   int64_t divisor_[XPU_MAX_TENSORINFO_DIMS];
   int64_t sizes_[XPU_MAX_TENSORINFO_DIMS];
@@ -99,13 +99,13 @@ void nonzero_template(const Tensor& self_, Tensor& out) {
   bool need_to_copy = out.dim() == 2 &&
       out.sizes()[0] == num_nonzeros && out.sizes()[1] == self.dim() &&
       !out.t().is_contiguous();
-  Tensor tensor_ = need_to_copy
+  Tensor out_ = need_to_copy
       ? Tensor(at::detail::empty_xpu(
             {self.dim(), num_nonzeros}, out.options()))
       : out.resize_({self.dim(), num_nonzeros});
 
   if (num_nonzeros > 0 && num_dim > 0) {
-    int64_t* tensor_begin = tensor_.data_ptr<int64_t>();
+    int64_t* out_begin = out_.data_ptr<int64_t>();
 
     // preload sizes tensor for index calculation
     int64_t sizes[XPU_MAX_TENSORINFO_DIMS];
@@ -119,11 +119,11 @@ void nonzero_template(const Tensor& self_, Tensor& out) {
 
     const int64_t N = num_nonzeros * num_dim;
     // restore flatten idx to indices
-    FlattenIdxtoRealIdxKernelFunctor kfn(
+    FlattenIdxToRealIdxKernelFunctor kfn(
         N,
         num_dim,
         num_nonzeros,
-        tensor_begin,
+        out_begin,
         idx_flat_begin,
         divisor,
         sizes);
@@ -134,11 +134,11 @@ void nonzero_template(const Tensor& self_, Tensor& out) {
     sycl_kernel_submit(wg_sz * num_wg, wg_sz, getCurrentSYCLQueue(), kfn);
   }
   if (need_to_copy) {
-    out.copy_(tensor_.t());
+    out.copy_(out_.t());
   } else {
     // transpose out so it is correct size
-    Tensor tensor_temp = tensor_.t();
-    out.set_(tensor_temp);
+    Tensor out_temp = out_.t();
+    out.set_(out_temp);
   }
 }
 
@@ -174,13 +174,13 @@ void nonzero_static_template(const Tensor& self_, int64_t size, int64_t fill_val
   bool need_to_copy = out.dim() == 2 &&
       out.sizes()[0] == num_nonzeros && out.sizes()[1] == self.dim() &&
       !out.t().is_contiguous();
-  Tensor tensor_ = need_to_copy
+  Tensor out_ = need_to_copy
       ? Tensor(at::detail::empty_xpu(
             {self.dim(), num_nonzeros}, out.options()))
       : out.resize_({self.dim(), num_nonzeros});
 
   if (num_nonzeros > 0 && num_dim > 0) {
-    int64_t* tensor_begin = tensor_.data_ptr<int64_t>();
+    int64_t* out_begin = out_.data_ptr<int64_t>();
 
     // preload sizes tensor for index calculation
     int64_t sizes[XPU_MAX_TENSORINFO_DIMS];
@@ -194,11 +194,11 @@ void nonzero_static_template(const Tensor& self_, int64_t size, int64_t fill_val
 
     const int64_t N = num_nonzeros * num_dim;
     // restore flatten idx to indices
-    FlattenIdxtoRealIdxKernelFunctor kfn(
+    FlattenIdxToRealIdxKernelFunctor kfn(
         N,
         num_dim,
         num_nonzeros,
-        tensor_begin,
+        out_begin,
         idx_flat_begin,
         divisor,
         sizes);
@@ -209,11 +209,11 @@ void nonzero_static_template(const Tensor& self_, int64_t size, int64_t fill_val
     sycl_kernel_submit(wg_sz * num_wg, wg_sz, getCurrentSYCLQueue(), kfn);
   }
   if (need_to_copy) {
-    out.copy_(tensor_.t());
+    out.copy_(out_.t());
   } else {
     // transpose out so it is correct size
-    Tensor tensor_temp = tensor_.t();
-    out.set_(tensor_temp);
+    Tensor out_temp = out_.t();
+    out.set_(out_temp);
   }
 }
 
