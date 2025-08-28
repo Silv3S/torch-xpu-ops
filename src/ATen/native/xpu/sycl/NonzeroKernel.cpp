@@ -99,7 +99,7 @@ void nonzero_template(const Tensor& self_, Tensor& out) {
   bool need_to_copy = out.dim() == 2 &&
       out.sizes()[0] == num_nonzeros && out.sizes()[1] == self.dim() &&
       !out.t().is_contiguous();
-  at::Tensor tensor_ = need_to_copy
+  Tensor tensor_ = need_to_copy
       ? Tensor(at::detail::empty_xpu(
             {self.dim(), num_nonzeros}, out.options()))
       : out.resize_({self.dim(), num_nonzeros});
@@ -174,7 +174,7 @@ void nonzero_static_template(const Tensor& self_, int64_t size, int64_t fill_val
   bool need_to_copy = out.dim() == 2 &&
       out.sizes()[0] == num_nonzeros && out.sizes()[1] == self.dim() &&
       !out.t().is_contiguous();
-  at::Tensor tensor_ = need_to_copy
+  Tensor tensor_ = need_to_copy
       ? Tensor(at::detail::empty_xpu(
             {self.dim(), num_nonzeros}, out.options()))
       : out.resize_({self.dim(), num_nonzeros});
