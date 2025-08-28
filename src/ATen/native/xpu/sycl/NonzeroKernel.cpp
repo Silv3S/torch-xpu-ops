@@ -88,8 +88,6 @@ void nonzero_template(const Tensor& self_, Tensor& out) {
 
   Tensor idx_flat = at::empty(
       {N}, out.options().memory_format(LEGACY_CONTIGUOUS_MEMORY_FORMAT));
-  Tensor range = at::empty(
-      {N}, out.options().memory_format(LEGACY_CONTIGUOUS_MEMORY_FORMAT));
 
   const scalar_t* self_begin = self.const_data_ptr<scalar_t>();
   int64_t* idx_flat_begin = idx_flat.data_ptr<int64_t>();
@@ -167,8 +165,6 @@ void nonzero_static_template(const Tensor& self_, int64_t size, int64_t fill_val
   int64_t N = self.numel();
 
   Tensor idx_flat = at::empty(
-      {N}, out.options().memory_format(LEGACY_CONTIGUOUS_MEMORY_FORMAT));
-  Tensor range = at::empty(
       {N}, out.options().memory_format(LEGACY_CONTIGUOUS_MEMORY_FORMAT));
 
   const scalar_t* self_begin = self.const_data_ptr<scalar_t>();
