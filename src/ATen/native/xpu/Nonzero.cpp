@@ -1,8 +1,6 @@
 #include <ATen/core/Tensor.h>
-#include <ATen/ops/full.h>
 #include <ATen/xpu/EmptyTensor.h>
 #include <comm/TensorInfo.h>
-
 #include <ATen/native/xpu/sycl/NonzeroKernel.h>
 
 namespace at {
@@ -51,18 +49,6 @@ Tensor& nonzero_static_out_xpu(
     Tensor& out) {
   nonzero_common_checks(self, out, "nonzero_static");
   xpu::nonzero_static_kernel(self, size, fill_value, out);
-
-  // Naive implementation to just trim/expand result from existing nonzero_kernel
-  // TODO - remove this block and implement it in nonzero_static_kernel
-  int64_t num_nonzero = out.size(0); 
-  int64_t out_size = std::max(size, num_nonzero);
-  auto filled = at::full({out_size, self.dim()}, fill_value, out.options());
-  if (num_nonzero > 0) {
-    filled.narrow(0, 0, num_nonzero).copy_(out);
-  }
-  out = filled.narrow(0, 0, size);
-  // Naive implementation to just trim/expand result from existing nonzero_kernel
-
   return out;
 }
 
