@@ -1,16 +1,17 @@
 #include <ATen/core/Tensor.h>
 #include <ATen/ops/full.h>
 #include <ATen/xpu/EmptyTensor.h>
+#include <comm/TensorInfo.h>
 
 #include <ATen/native/xpu/sycl/NonzeroKernel.h>
 
 namespace at {
 namespace native {
 
-void nonzero_common_checks(const Tensor& self, Tensor& out) {
+void nonzero_common_checks(const Tensor& self, Tensor& out, const std::string& op_name) {
   TORCH_CHECK(
       self.numel() < std::numeric_limits<int>::max(),
-      "nonzero is not supported for tensors with more than INT_MAX elements, \
+      op_name, " is not supported for tensors with more than INT_MAX elements, \
       See https://github.com/pytorch/pytorch/issues/51871");
   TORCH_CHECK(
       out.dtype() == at::kLong,
@@ -26,13 +27,13 @@ void nonzero_common_checks(const Tensor& self, Tensor& out) {
       self.device());
   TORCH_CHECK(
       self.dim() <= XPU_MAX_TENSORINFO_DIMS,
-      "nonzero is not supported for tensor with more than ",
+      op_name, " is not supported for tensor with more than ",
       XPU_MAX_TENSORINFO_DIMS,
       " dimensions");
 }
 
 Tensor& nonzero_out_xpu(const Tensor& self, Tensor& out) {
-  nonzero_common_checks(self, out);
+  nonzero_common_checks(self, out, "nonzero");
   xpu::nonzero_kernel(self, out);
   return out;
 }
@@ -48,7 +49,7 @@ Tensor& nonzero_static_out_xpu(
     int64_t size,
     int64_t fill_value,
     Tensor& out) {
-  nonzero_common_checks(self, out);
+  nonzero_common_checks(self, out, "nonzero_static");
   xpu::nonzero_static_kernel(self, size, fill_value, out);
 
   // Naive implementation to just trim/expand result from existing nonzero_kernel
