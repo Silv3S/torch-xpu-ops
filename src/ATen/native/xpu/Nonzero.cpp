@@ -1,6 +1,7 @@
 #include <ATen/core/Tensor.h>
 #include <ATen/native/xpu/sycl/NonzeroKernel.h>
 #include <ATen/ops/full.h>
+#include <ATen/ops/cat.h>
 #include <ATen/xpu/EmptyTensor.h>
 #include <comm/TensorInfo.h>
 
@@ -58,7 +59,13 @@ Tensor& nonzero_static_out_xpu(
     return out;
   }
   xpu::nonzero_kernel(self, out);
-  // TODO - concat if size>nonzero_numel else slice
+  auto nonzero_size = out.size(0);
+  if(nonzero_size > size) {
+    out = out.narrow(0, 0, size);
+  } else if(nonzero_size < size) {
+    auto padding = at::full({size - nonzero_size, out.size(1)}, fill_value, out.options());
+    out = at::cat({out, padding}, 0);
+  }
   return out;
 }
 
