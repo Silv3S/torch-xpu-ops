@@ -57,7 +57,7 @@ Tensor& nonzero_static_out_xpu(
     out = at::full({size, self.dim()}, fill_value, out.options());
     return out;
   }
-  xpu::nonzero_static_kernel(self, size, fill_value, out);
+  xpu::nonzero_kernel(self, out);
   return out;
 }
 
