@@ -58,6 +58,7 @@ Tensor& nonzero_static_out_xpu(
     return out;
   }
   xpu::nonzero_kernel(self, out);
+  // TODO - concat if size>nonzero_numel else slice
   return out;
 }
 
