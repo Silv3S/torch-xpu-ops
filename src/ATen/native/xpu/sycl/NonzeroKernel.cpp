@@ -150,5 +150,4 @@ void nonzero_kernel(const Tensor& self, Tensor& out) {
       "nonzero_xpu",
       [&] { nonzero_template<scalar_t>(self, out); });
 }
-
 } // namespace at::native::xpu
