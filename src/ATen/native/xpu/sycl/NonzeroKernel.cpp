@@ -15,8 +15,8 @@ struct FlattenIdxToRealIdxKernelFunctor {
     auto global_id = item_id.get_global_linear_id();
 
     if (global_id < N_) {
-      auto index = global_id / num_dim_;
-      auto dim = global_id % num_dim_;
+      auto dim = global_id / num_nonzeros_;
+      auto index = global_id % num_nonzeros_;
       out_begin_[global_id] =
           idx_flat_begin_[index] / divisor_[dim] % sizes_[dim];
     }
@@ -81,28 +81,30 @@ struct CopyIfFunc<bool> {
 template <typename scalar_t>
 void nonzero_template(const Tensor& self_, Tensor& out) {
   Tensor self = self_.contiguous();
+
   const int64_t num_dim = self.dim();
-  int64_t N = self.numel();
+  const int64_t N = self.numel();
 
   Tensor idx_flat = at::empty(
       {N}, out.options().memory_format(LEGACY_CONTIGUOUS_MEMORY_FORMAT));
 
   const scalar_t* self_begin = self.const_data_ptr<scalar_t>();
   int64_t* idx_flat_begin = idx_flat.data_ptr<int64_t>();
-  int64_t* fake_range_begin = nullptr; // Used just to calculate numel
+  int64_t* range_begin = nullptr;
 
   CopyIfFunc<scalar_t> f(self_begin);
   auto idx_flat_end =
-      pstl::copy_if<int64_t>(fake_range_begin, fake_range_begin + N, idx_flat_begin, f);
+      pstl::copy_if<int64_t>(range_begin, range_begin + N, idx_flat_begin, f);
+
   auto num_nonzeros = std::distance(idx_flat_begin, idx_flat_end);
 
   bool need_to_copy = out.dim() == 2 &&
-      out.sizes()[0] == num_nonzeros && out.sizes()[1] == self.dim() &&
-      !out.is_contiguous();
+      out.sizes()[0] == num_nonzeros && out.sizes()[1] == num_dim &&
+      !out.t().is_contiguous();
   Tensor out_ = need_to_copy
       ? Tensor(at::detail::empty_xpu(
-            {num_nonzeros, self.dim()}, out.options()))
-      : out.resize_({num_nonzeros, self.dim()});
+            {num_dim, num_nonzeros}, out.options()))
+      : out.resize_({num_dim, num_nonzeros});
 
   if (num_nonzeros > 0 && num_dim > 0) {
     int64_t* out_begin = out_.data_ptr<int64_t>();
@@ -134,9 +136,11 @@ void nonzero_template(const Tensor& self_, Tensor& out) {
     sycl_kernel_submit(wg_sz * num_wg, wg_sz, getCurrentSYCLQueue(), kfn);
   }
   if (need_to_copy) {
-    out.copy_(out_);
+    out.copy_(out_.t());
   } else {
-    out.set_(out_);
+    // transpose out so it is correct size
+    Tensor out_temp = out_.t();
+    out.set_(out_temp);
   }
 }
 

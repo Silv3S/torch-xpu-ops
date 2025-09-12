@@ -32,10 +32,10 @@ void nonzero_common_checks(const Tensor& self, Tensor& out, const std::string& o
       " dimensions");
 }
 
-Tensor& nonzero_out_xpu(const Tensor& self, Tensor& out) {
+  Tensor& nonzero_out_xpu(const Tensor& self, Tensor& out) {
   nonzero_common_checks(self, out, "nonzero");
   if (self.numel() == 0) {
-    out = at::empty({0, self.dim()}, out.options());
+    out = at::detail::empty_xpu({0, self.dim()}, out.options());
     return out;
   }
   xpu::nonzero_kernel(self, out);
