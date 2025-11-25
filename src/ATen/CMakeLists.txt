@@ -29,18 +29,24 @@ macro(install_xpu_headers subdir)
   endif()
 endmacro()
 
-install_xpu_headers("xpu")
-install_xpu_headers("native/xpu")
-install_xpu_headers("native/xpu/sycl")
-install_xpu_headers("native/xpu/mkl")
-install_xpu_headers("native/nested/xpu")
-install_xpu_headers("native/nested/xpu/sycl")
-install_xpu_headers("native/quantized/xpu")
-install_xpu_headers("native/quantized/xpu/sycl")
-install_xpu_headers("native/sparse/xpu")
-install_xpu_headers("native/sparse/xpu/sycl")
-install_xpu_headers("native/transformers/xpu")
-install_xpu_headers("native/transformers/xpu/sycl")
+set(XPU_HEADER_DIRS
+  "xpu"
+  "native/xpu"
+  "native/xpu/sycl"
+  "native/xpu/mkl"
+  "native/nested/xpu"
+  "native/nested/xpu/sycl"
+  "native/quantized/xpu"
+  "native/quantized/xpu/sycl"
+  "native/sparse/xpu"
+  "native/sparse/xpu/sycl"
+  "native/transformers/xpu"
+  "native/transformers/xpu/sycl"
+)
+
+foreach(subdir ${XPU_HEADER_DIRS})
+  install_xpu_headers(${subdir})
+endforeach()
 
 if(xpu_ops_generated_headers)
   install(FILES ${xpu_ops_generated_headers} DESTINATION ${AT_INSTALL_INCLUDE_DIR}/ATen/ops)
