@@ -41,7 +41,7 @@ set(XPU_HEADER_DIRS
   "native/sparse/xpu"
   "native/sparse/xpu/sycl"
   "native/transformers/xpu"
-  "native/transformers/xpu/sycl"
+  "native/transformers/xpu/flash_attn"
 )
 
 foreach(subdir ${XPU_HEADER_DIRS})
