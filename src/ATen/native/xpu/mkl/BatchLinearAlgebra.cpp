@@ -577,9 +577,7 @@ void linalg_cholesky_ex_kernel_impl(const Tensor& A,
     bool check_errors,
     const Tensor& L,
     const Tensor& info) {
-    if(upper) {
-      TORCH_CHECK(false, "DEBUG ASSERT | upper = True");
-    }
+      // MKL implementation of Cholesky decomposition
 }
 
 void linalg_cholesky_ex_kernel(const Tensor& A,

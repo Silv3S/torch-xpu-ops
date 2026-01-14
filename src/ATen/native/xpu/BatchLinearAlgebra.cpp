@@ -13,7 +13,6 @@
 #include <ATen/native/DispatchStub.h>
 #include <ATen/native/LinearAlgebraUtils.h>
 #include <ATen/ops/linalg_cholesky_ex_native.h>
-
 #if defined(USE_ONEMKL_XPU)
 #include <ATen/native/xpu/mkl/BatchLinearAlgebra.h>
 #endif // USE_ONEMKL_XPU
@@ -83,6 +82,5 @@ TORCH_IMPL_FUNC(linalg_cholesky_ex_xpu_out)(const Tensor& A,
     const Tensor& info) {
       xpu::linalg_cholesky_ex_kernel(A, upper, check_errors, L, info);
 }
-
 
 } // namespace at::native
