@@ -571,4 +571,25 @@ void lu_factor_mkl(
   pivots.copy_(pivots_);
 }
 
+template <typename scalar_t>
+void linalg_cholesky_ex_kernel_impl(const Tensor& A,
+    bool upper,
+    bool check_errors,
+    const Tensor& L,
+    const Tensor& info) {
+    if(upper) {
+      TORCH_CHECK(false, "DEBUG ASSERT | upper = True");
+    }
+}
+
+void linalg_cholesky_ex_kernel(const Tensor& A,
+    bool upper,
+    bool check_errors,
+    const Tensor& L,
+    const Tensor& info) {
+  AT_DISPATCH_FLOATING_TYPES(A.scalar_type(), "linalg_cholesky_ex_xpu", [&] {
+    linalg_cholesky_ex_kernel_impl<scalar_t>(A, upper, check_errors, L, info);
+  });
+}
+
 } // namespace at::native::xpu
