@@ -15,13 +15,6 @@
 - func: _copy_from(Tensor self, Tensor dst, bool non_blocking=False) -> Tensor
   autogen: _copy_from.out
 
-# We need this to be able to properly copy from a CPU to an XLA tensor with different sizes.
-# See https://github.com/pytorch/xla/issues/2881
-- func: _copy_from_and_resize(Tensor self, Tensor dst) -> Tensor
-  dispatch:
-    MPS: _copy_from_and_resize_mps
-  autogen: _copy_from_and_resize.out
-
 # Return: (Tensor output, Tensor indices)
 - func: adaptive_max_pool1d(Tensor self, int[1] output_size) -> (Tensor, Tensor)
 
@@ -3716,7 +3709,6 @@
   python_module: nn
   dispatch:
     XPU: hardtanh_backward_out
-    MPS: hardtanh_backward_out_mps
 
 - func: hardtanh_backward(Tensor grad_output, Tensor self, Scalar min_val, Scalar max_val) -> Tensor
   python_module: nn
@@ -7195,7 +7187,6 @@
   variants: method  # This is method-only to match the previous tensor API. In the future we could make this a function too.
   dispatch:
     CompositeExplicitAutograd: repeat
-    MPS: repeat_mps
   autogen: repeat.out
   tags: core
 
