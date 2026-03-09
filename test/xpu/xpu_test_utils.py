@@ -1,4 +1,4 @@
-# Copyright 2020-2025 Intel Corporation
+# Copyright 2020-2026 Intel Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -368,6 +368,7 @@ _cuda_xfail_xpu_pass = [
         "_refs.true_div",
         "test_python_ref_torch_fallback",
     ),
+    ("_refs.true_divide", "test_python_ref_torch_fallback"),
     ("argsort", "test_non_standard_bool_values"),
     ("sort", "test_non_standard_bool_values"),
 ]

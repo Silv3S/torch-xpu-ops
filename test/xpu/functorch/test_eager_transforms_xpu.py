@@ -5,6 +5,8 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
+# Owner(s): ["module: functorch"]
+
 import copy
 import math
 import os
@@ -5084,6 +5086,10 @@ def construct_sum_pyop():
 
     @mysum.py_impl(torch._C.DispatchKey.AutogradCUDA)
     def mysum_autograd_cuda(x, dim):
+        return torch.sum(x, dim)
+
+    @mysum.py_impl(torch._C.DispatchKey.AutogradXPU)
+    def mysum_autograd_xpu(x, dim):
         return torch.sum(x, dim)
 
     return mysum

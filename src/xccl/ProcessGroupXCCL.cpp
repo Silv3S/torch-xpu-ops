@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2025 Intel Corporation
+ * Copyright 2020-2026 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -2007,6 +2007,7 @@ c10::intrusive_ptr<Work> ProcessGroupXCCL::alltoall_base(
         return;
       },
       OpType::ALLTOALL_BASE,
+      opts.asyncOp,
       "xccl:all_to_all");
 }
 
