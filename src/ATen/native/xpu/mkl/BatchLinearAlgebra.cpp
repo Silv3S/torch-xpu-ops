@@ -494,5 +494,6 @@ void linalg_cholesky_ex_kernel(const Tensor& A,
   AT_DISPATCH_FLOATING_TYPES(A.scalar_type(), "linalg_cholesky_ex_xpu", [&] {
     linalg_cholesky_ex_kernel_impl<scalar_t>(A, upper, check_errors, L, info);
   });
+}
 
 } // namespace at::native::xpu
