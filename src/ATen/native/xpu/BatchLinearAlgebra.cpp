@@ -12,7 +12,6 @@
 #include <ATen/native/BatchLinearAlgebra.h>
 #include <ATen/native/DispatchStub.h>
 #include <ATen/native/LinearAlgebraUtils.h>
-#include <ATen/ops/linalg_cholesky_ex_native.h>
 #if defined(USE_ONEMKL_XPU)
 #include <ATen/native/xpu/mkl/BatchLinearAlgebra.h>
 #endif // USE_ONEMKL_XPU
