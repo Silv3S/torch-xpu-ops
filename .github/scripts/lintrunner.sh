@@ -64,4 +64,13 @@ jq --raw-output \
     '"::\(if .severity == "advice" or .severity == "disabled" then "warning" else .severity end) file=\(.path),line=\(.line),col=\(.char),title=\(.code) \(.name)::" + (.description | gsub("\\n"; "%0A"))' \
     lint.json || true
 
+# Print a summary of failure counts per linter
+if [[ -f lint.json ]] && [[ -s lint.json ]]; then
+    echo ""
+    echo "=== Lint failure summary ==="
+    jq --raw-output '"\(.code)  \(.name)"' lint.json \
+        | sort | uniq -c | sort -rn \
+        | awk '{printf "%6d  %s\n", $1, substr($0, index($0,$2))}'
+fi
+
 exit $RC
