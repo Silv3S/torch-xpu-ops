@@ -151,37 +151,59 @@ Table 2 -- `ContractionOff` execution modes:
 | on              | 0          | 2            | 8          |
 | off             | 2          | 4            | 22         |
 
-### [N] <platform / GPU / compiler version> -- fill in
+### [3] Windows / BMG / icx 2026.0  (recorded 2026-07-03)
 
-- GPU: `<name + L0 driver>`
-- Compiler: `<icx/icpx --version>`, driver `<icpx | icx>`
-- Command: `<DEV=... ./run.sh | set DEV=... & run.bat>`
+- GPU: Intel(R) Arc(TM) B570 Graphics (Battlemage)
+- Compiler: Intel oneAPI DPC++/C++ 2026.0.0 (2026.0.0.20260331), driver `icx`
+  (clang-cl / MSVC-style)
+- Command: `set DEV=bmg  &  run.bat`
+
+**DECISIVE DIVERGENCE. Windows never reaches exact 10.0 -- in ANY config.** Same
+compiler version and same GPU as run [2]; only the driver mode differs (icx
+clang-cl vs icpx GNU). Every one of the 9 cases is `0x41200001` (1 ULP high),
+including `-ffp-contract=off` on float-only -- the fix that is guaranteed on
+Linux.
 
 Table 1 -- `pow(10,1)`:
 
-| `-ffp-contract` | variant       | `pow(10,1)`  | verdict |
-|-----------------|---------------|--------------|---------|
-| fast            | float-only    | `0x________` |         |
-| fast            | float+cfloat  | `0x________` |         |
-| fast            | all-dtypes    | `0x________` |         |
-| on              | float-only    | `0x________` |         |
-| on              | float+cfloat  | `0x________` |         |
-| on              | all-dtypes    | `0x________` |         |
-| off             | float-only    | `0x________` |         |
-| off             | float+cfloat  | `0x________` |         |
-| off             | all-dtypes    | `0x________` |         |
+| `-ffp-contract` | variant       | `pow(10,1)`  | verdict    |
+|-----------------|---------------|--------------|------------|
+| **fast**        | float-only    | `0x41200001` | 1 ULP high |
+| **fast**        | float+cfloat  | `0x41200001` | 1 ULP high |
+| **fast**        | all-dtypes    | `0x41200001` | 1 ULP high |
+| **on**          | float-only    | `0x41200001` | 1 ULP high |
+| **on**          | float+cfloat  | `0x41200001` | 1 ULP high |
+| **on**          | all-dtypes    | `0x41200001` | 1 ULP high |
+| **off**         | float-only    | `0x41200001` | 1 ULP high |
+| **off**         | float+cfloat  | `0x41200001` | 1 ULP high |
+| **off**         | all-dtypes    | `0x41200001` | 1 ULP high |
 
 Table 2 -- `ContractionOff` execution modes:
 
 | `-ffp-contract` | float-only | float+cfloat | all-dtypes |
 |-----------------|------------|--------------|------------|
-| fast            |            |              |            |
-| on              |            |              |            |
-| off             |            |              |            |
+| fast            | 0          | 2            | 6          |
+| on              | 0          | 2            | 6          |
+| off             | 0          | 2            | 6          |
 
-Copy this block per machine (PVC+Linux, BMG+Linux, BMG+Windows, MTL+Linux,
-MTL+Windows). The key question: under `fast`/`on`, do **float+cfloat** and
-**all-dtypes** reach exact `0x41200000`, or stay `0x41200001`? If a platform stays
-1 ULP high while Linux/PVC goes exact -- with the same Table 2 counts -- the
-cross-kernel `ContractionOff` leak is not reaching the float kernel there, pinning
-the divergence to the driver/runtime, not the source or flag semantics.
+Two independent Windows/clang-cl divergences from Linux:
+
+1. **Front-end (SPIR-V emission):** the counts are **mode-invariant** on Windows
+   (always 0/2/6), whereas on Linux `-ffp-contract` changes them -- notably `off`
+   stamps `ContractionOff` onto the float kernel itself (Linux off float-only=2,
+   Windows=0). So the clang-cl driver does NOT translate `-ffp-contract=off` into
+   a kernel-scoped `ContractionOff` on the float kernel. This is why the Linux
+   `off` fix does nothing on Windows.
+2. **Back-end (AOT honoring):** for `fast`, BOTH platforms emit the SAME counts
+   (0/2/6), yet Linux float+cfloat/all-dtypes come out exact while Windows stays
+   1 ULP high. Same `ContractionOff` on the cfloat sibling, opposite result --
+   the Windows AOT backend does not de-contract the shared `powf` path even when
+   the mode is present.
+
+Bottom line: on Windows/clang-cl there is no `-ffp-contract` setting -- and no
+sibling-kernel composition -- that yields exact `pow(10,1)` in this setup. The
+exactness Linux gets is a Linux-driver behavior, not something the flags or the
+source can force on Windows. (To fully separate divergence 1 from 2, pull the
+Windows device SPIR-V for the `fast`/float+cfloat build and diff its
+`ContractionOff` placement + `powf` lowering against Linux's -- same counts do
+not guarantee byte-identical modules.)
