@@ -87,11 +87,15 @@ Root cause is therefore not float-specific and not a build flag: it is whether a
 
 Each block below is one recorded run of `run.sh` / `run.bat` on a given machine.
 
-### [1] Linux / PVC / icpx 2026.0  (baseline, recorded 2026-07-03)
+### [1] Linux / PVC/BMG / icpx 2026.0  (recorded 2026-07-03)
 
-- GPU: Intel(R) Data Center GPU Max 1550, L0 driver 1.6.33578+51 (agama 12.60.7)
-- Compiler: Intel oneAPI DPC++/C++ 2026.0.0 (2026.0.0.20260331), driver `icpx`
-- Command: `DEV=pvc ./run.sh`
+- Platform: Linux. Verified on PVC (Data Center GPU Max 1550) and BMG (Arc B570);
+  identical on both.
+- Compiler: Intel oneAPI DPC++/C++ 2026.0.0 (2026.0.0.20260331). Both `icpx` AND
+  `icx` were run on Linux and give BYTE-IDENTICAL tables -- the compiler binary is
+  NOT the variable. (Same GNU-style driver; `icx` on Linux still reaches exact
+  10.0.)
+- Command: `DEV=pvc ./run.sh` / `DEV=bmg ./run.sh`
 
 Table 1 -- `pow(10,1)`:
 
@@ -119,39 +123,7 @@ Reading: `off` fixes even float-only (it puts `ContractionOff` on the float kern
 itself). Under `fast`/`on`, float-only stays 1 ULP high; adding complex&lt;float&gt;
 (and hence all-dtypes) reaches exact 10.0 via the shared-`powf` leak.
 
-### [2] Linux / BMG / icpx 2026.0  (recorded 2026-07-03)
-
-- Compiler: Intel oneAPI DPC++/C++ 2026.0.0 (2026.0.0.20260331), driver `icpx`
-- Command: `DEV=bmg ./run.sh` (true BMG-targeted AOT image)
-
-Result: identical to the PVC baseline -- under `fast`/`on`, float-only is 1 ULP
-high while float+cfloat and all-dtypes are exact; `off` fixes all. The
-cross-kernel `powf` leak reaches the float kernel on BMG+Linux too, so the
-Linux-vs-Windows divergence is not a BMG-arch effect.
-
-Table 1 -- `pow(10,1)`:
-
-| `-ffp-contract` | variant       | `pow(10,1)`  | verdict    |
-|-----------------|---------------|--------------|------------|
-| **fast**        | float-only    | `0x41200001` | 1 ULP high |
-| **fast**        | float+cfloat  | `0x41200000` | exact 10.0 |
-| **fast**        | all-dtypes    | `0x41200000` | exact 10.0 |
-| **on**          | float-only    | `0x41200001` | 1 ULP high |
-| **on**          | float+cfloat  | `0x41200000` | exact 10.0 |
-| **on**          | all-dtypes    | `0x41200000` | exact 10.0 |
-| **off**         | float-only    | `0x41200000` | exact 10.0 |
-| **off**         | float+cfloat  | `0x41200000` | exact 10.0 |
-| **off**         | all-dtypes    | `0x41200000` | exact 10.0 |
-
-Table 2 -- `ContractionOff` execution modes:
-
-| `-ffp-contract` | float-only | float+cfloat | all-dtypes |
-|-----------------|------------|--------------|------------|
-| fast            | 0          | 2            | 6          |
-| on              | 0          | 2            | 8          |
-| off             | 2          | 4            | 22         |
-
-### [3] Windows / BMG / icx 2026.0  (recorded 2026-07-03)
+### [2] Windows / icx 2026.0  (recorded 2026-07-03)
 
 - GPU: Intel(R) Arc(TM) B570 Graphics (Battlemage)
 - Compiler: Intel oneAPI DPC++/C++ 2026.0.0 (2026.0.0.20260331), driver `icx`
