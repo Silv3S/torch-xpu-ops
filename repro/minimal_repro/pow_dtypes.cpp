@@ -1,10 +1,26 @@
 // Minimal reproducer: the SAME float logspace kernel gives a different result
-// depending only on whether sibling dtype kernels share the translation unit.
+// depending only on which sibling dtype kernels share the translation unit.
 //
-// Build the float-only variant:   -DEXTRA_DTYPES=0
-// Build the all-dtypes variant:    -DEXTRA_DTYPES=1
-// The float kernel source is byte-identical between the two; the only change is
-// the presence of the other-dtype LogspaceFunctor instantiations in the module.
+// -DVARIANT=0  float-only     : just the float kernel.
+// -DVARIANT=1  float+cfloat   : float + std::complex<float> (the MINIMAL trigger).
+// -DVARIANT=2  all-dtypes     : float + every dtype torch's RangeFactoriesKernel
+//                               instantiates (double/half/bf16/int*/complex).
+// The float kernel source is byte-identical across all three; only the set of
+// sibling kernels in the module changes.
+//
+// KEY finding: the leak is code-path-specific, not module-global. Adding bf16 or
+// complex<double> DOES emit SPIR-V ContractionOff, yet the float pow stays 1 ULP
+// high. Only complex<float> flips it, because complex<float> lowers to the same
+// `powf` builtin as the float kernel, so its ContractionOff de-contracts the
+// shared powf path. complex<double>/bf16 use the `pow` (double) path instead.
+//
+// Minimal build (AOT is required; JIT does not show the effect):
+//   icpx -fsycl -ffp-contract=fast -fsycl-targets=spir64_gen \
+//        -Xsycl-target-backend=spir64_gen "-device pvc" -DVARIANT=1 pow_dtypes.cpp
+// See run.sh (Linux/icpx) and run.bat (Windows/icx clang-cl) for the full sweep.
+#ifndef VARIANT
+#define VARIANT 0
+#endif
 #include <sycl/sycl.hpp>
 #include <sycl/ext/oneapi/bfloat16.hpp>
 #include <complex>
@@ -86,13 +102,23 @@ int main() {
     const int64_t steps = 2;
 
     // The kernel we care about: float logspace(1,0,2) -> out[0] = 10^1.
-    // This block is IDENTICAL in both build variants.
+    // This block is IDENTICAL across all variants.
     float out_f[2] = {0, 0};
     run_logspace<float, float, Tf>(q, out_f, steps, 10.0f, 1.0f, -1.0f);
 
-#if EXTRA_DTYPES
-    // The other dtype kernels torch instantiates in the SAME TU. Their mere
-    // presence flips the float kernel's result via module-wide ContractionOff.
+#if VARIANT >= 1
+    // complex<float> sibling: the minimal trigger. It lowers to `powf` (the same
+    // builtin as the float kernel), so its ContractionOff de-contracts the shared
+    // powf path and flips the float result to exact 10.0.
+    std::complex<float> out_cf[2] = {{0, 0}, {0, 0}};
+    run_logspace_complex<std::complex<float>, std::complex<float>, Tcf>(
+        q, out_cf, steps, {10.0f, 0.0f}, {1.0f, 0.0f}, {-1.0f, 0.0f});
+#endif
+
+#if VARIANT >= 2
+    // The remaining dtype kernels torch instantiates in the SAME TU. (bf16 and
+    // complex<double> emit ContractionOff too, but on the `pow` (double) path, so
+    // they do NOT flip the float result on their own.)
     double out_d[2] = {0, 0};
     run_logspace<double, double, Td>(q, out_d, steps, 10.0, 1.0, -1.0);
 
@@ -113,9 +139,6 @@ int main() {
     int64_t  out_i64[2] = {0, 0};
     run_logspace<int64_t, float, Ti64>(q, out_i64, steps, (int64_t)10, (int64_t)1, -1.0f);
 
-    std::complex<float> out_cf[2] = {{0, 0}, {0, 0}};
-    run_logspace_complex<std::complex<float>, std::complex<float>, Tcf>(
-        q, out_cf, steps, {10.0f, 0.0f}, {1.0f, 0.0f}, {-1.0f, 0.0f});
     std::complex<double> out_cd[2] = {{0, 0}, {0, 0}};
     run_logspace_complex<std::complex<double>, std::complex<double>, Tcd>(
         q, out_cd, steps, {10.0, 0.0}, {1.0, 0.0}, {-1.0, 0.0});
@@ -123,10 +146,12 @@ int main() {
 
     std::cout << "Running on: "
               << q.get_device().get_info<sycl::info::device::name>() << "\n";
-#if EXTRA_DTYPES
-    std::cout << "TU variant: FLOAT + all other dtype kernels (EXTRA_DTYPES=1)\n";
+#if VARIANT >= 2
+    std::cout << "TU variant: FLOAT + all dtype kernels (VARIANT=2)\n";
+#elif VARIANT >= 1
+    std::cout << "TU variant: FLOAT + complex<float> (VARIANT=1)\n";
 #else
-    std::cout << "TU variant: FLOAT kernel only (EXTRA_DTYPES=0)\n";
+    std::cout << "TU variant: FLOAT kernel only (VARIANT=0)\n";
 #endif
     std::cout << std::setprecision(17);
     std::cout << "FLOAT logspace[0] = pow(10,1) = " << out_f[0]
